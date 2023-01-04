@@ -9,12 +9,19 @@ namespace BlazorServerLiveRender.Services
 
         public DllLoadContext() : base(isCollectible: true)
         {
-           
+            this.Unloading += DllLoadContext_Unloading;
+        }
+
+        private void DllLoadContext_Unloading(AssemblyLoadContext obj)
+        {
+            Console.WriteLine($"正在卸载DllLoadContext");
         }
 
         protected override Assembly Load(AssemblyName name)
         {
             return null!;
         }
+
+
     }
 }

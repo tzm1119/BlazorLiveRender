@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text;
 
@@ -13,7 +14,7 @@ namespace BlazorServerLiveRender.Services
         public string RazorHtml { get; set; } = "";
         public string Css { get; set; } = "";
     }
-    public interface ICompileHelper
+    public interface ICompileHelper:IDisposable
     {
         Task<Type> GetComponentType(CompileInfo info);
     }
@@ -28,21 +29,42 @@ namespace BlazorServerLiveRender.Services
             {
                 throw new Exception($"{TemplateProjectDirectoryPath}文件夹不存在，请修改此处的绝对路径为模板项目的文件夹路径。");
             }
+
+            timer = new Timer(CheckWeakRefAlive, null, 1000, 3000);
         }
- 
+
+        private Timer timer;
+
+        private void CheckWeakRefAlive(object? state)
+        {
+            var removeCount = weakList.RemoveAll(t => !t.IsAlive);
+            if (removeCount > 0)
+            {
+                Console.WriteLine($"本次移除了{removeCount}的上下文弱引用,总数为:{weakList.Count}");
+            }
+            else
+            {
+                Console.WriteLine($"未移除任何上下文弱引用，总数为:{weakList.Count}");
+            }
+
+        }
+
         /// <summary>
         /// 这个路径需要考虑 是单元测试，
         /// 还是真实项目，所以这里使用了绝对路径
         /// </summary>
-        private string TemplateProjectDirectoryPath 
+        private string TemplateProjectDirectoryPath
             = "D:\\Devops\\LiveRender\\BlazorServerLiveRender\\CompileTemplateProject";
 
+        private List<WeakReference> weakList = new List<WeakReference>();
         /// <summary>
         /// 临时生成的dll文件，在此文件夹下保存
         /// </summary>
         private string TempDllDirName = "TempComponentDll\\Com";
 
         private static int TempDir_Count = 1;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         public async Task<Type> GetComponentType(CompileInfo info)
         {
             // 生成新的临时文件夹名称
@@ -83,7 +105,7 @@ namespace BlazorServerLiveRender.Services
             }
 
             var dllName = "CompileTemplateProject.dll";
-            var dllFilePath = Path.Combine(TemplateProjectDirectoryPath,tempDllDirName, dllName);
+            var dllFilePath = Path.Combine(TemplateProjectDirectoryPath, tempDllDirName, dllName);
             Console.WriteLine($"临时dll路径为{dllFilePath}");
 
             // 由于每次编译后，都会生成一个同名的 CompileTemplateProject.dll
@@ -92,9 +114,16 @@ namespace BlazorServerLiveRender.Services
             // 具体可参考微软文档
             // https://learn.microsoft.com/zh-cn/dotnet/standard/assembly/unloadability
             var alc = new DllLoadContext();
-            
+
             Assembly assembly = alc.LoadFromAssemblyPath(dllFilePath);
+
+            var alcWeakRef = new WeakReference(alc, trackResurrection: true);
+            weakList.Add(alcWeakRef);
+
             var comType = assembly.GetType($"CompileTemplateProject.{comName}");
+
+            // 卸载上下文
+            alc.Unload();
             if (comType != null)
             {
                 return comType;
@@ -104,6 +133,11 @@ namespace BlazorServerLiveRender.Services
                 throw new Exception($"在dll中，未找到组件{comName}的Type，dll路径为{dllFilePath}");
             }
 
+        }
+
+        public void Dispose()
+        {
+            timer?.Dispose();
         }
     }
 }

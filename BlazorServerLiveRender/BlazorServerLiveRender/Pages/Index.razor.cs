@@ -1,11 +1,29 @@
 ﻿using BlazorServerLiveRender.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using System.Diagnostics.CodeAnalysis;
 
 namespace BlazorServerLiveRender.Pages
 {
+    public class MyDynamicCom:ComponentBase,IDisposable
+    {
+        [Parameter]
+        [NotNull]
+        public Type? Type { get; set; }
 
-    public partial class Index
+        public void Dispose()
+        {
+            Type = null;
+        }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenComponent(1, Type);
+            builder.CloseComponent();
+        }
+    }
+
+    public partial class Index:IDisposable
     {
         private CompileInfo CompileInfo;
 
@@ -42,6 +60,11 @@ namespace BlazorServerLiveRender.Pages
             };
         }
         private bool isCompiling = false;
+        private void RunGC()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
         /// <summary>
         /// 运行编译
         /// </summary>
@@ -52,6 +75,7 @@ namespace BlazorServerLiveRender.Pages
                 isCompiling = true;
                 _ = InvokeAsync(StateHasChanged);
                 DisplayComponentType = await CompileHelper.GetComponentType(CompileInfo);
+                //await CompileHelper.GetComponentType(CompileInfo);
             }
             catch (Exception ex)
             {
@@ -63,6 +87,12 @@ namespace BlazorServerLiveRender.Pages
                 _ = InvokeAsync(StateHasChanged);
             }
 
+        }
+
+        public void Dispose()
+        {
+            DisplayComponentType = null!;
+            Console.WriteLine("index组件Dispose");
         }
 
         private Exception? compileError;

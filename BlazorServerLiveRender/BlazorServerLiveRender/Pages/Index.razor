@@ -6,13 +6,14 @@
 
 <div class="container-fluid">
     <div class="col-6">
-        <DynamicComponent Type="DisplayComponentType"></DynamicComponent>
+        <MyDynamicCom Type="DisplayComponentType"></MyDynamicCom>
     </div>
     <div class="col-6">
         <div class="row">
             @if (!isCompiling)
             {
                 <button @onclick=@RunCompile>运行编译</button>
+                <button @onclick=@RunGC>回收</button>
             }
             else
             {
