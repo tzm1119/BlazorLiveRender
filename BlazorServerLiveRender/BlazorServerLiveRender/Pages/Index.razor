@@ -1,0 +1,51 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<h1>Live Render</h1>
+
+<div class="container-fluid">
+    <div class="col-6">
+        <DynamicComponent Type="DisplayComponentType"></DynamicComponent>
+    </div>
+    <div class="col-6">
+        <div class="row">
+            @if (!isCompiling)
+            {
+                <button @onclick=@RunCompile>运行编译</button>
+            }
+            else
+            {
+                <p>编译中...</p>
+            }
+           
+            @if (compileError != null)
+            {
+                <div class="alert alert-danger">
+                    @compileError.Message
+                </div>
+            }
+        </div>
+        <EditForm Model="CompileInfo">
+            <div class="row">
+                <label>
+                    Razor Html
+                </label>
+                <InputTextArea @bind-Value=CompileInfo.RazorHtml>
+
+                </InputTextArea>
+            </div>
+
+
+            <div class="row">
+                <label>
+                    Css
+                </label>
+                <InputTextArea @bind-Value=CompileInfo.Css>
+
+                </InputTextArea>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
